@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Created and designed by Levi Hicks -->
+    <meta name="theme-color" content="#000000">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C10d - Auth</title>
+    <link rel="stylesheet" href="/index.css"/>
+    <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="N11" />
+    <link rel="manifest" href="/site.webmanifest" />
+  </head>
+  <body>
+    <!-- Redir to https://n11.dev/auth?referrer=localhost&href=/auth -->
+     <script>
+        // get the param named "object" from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const object = urlParams.get("object");
+        // decode the object
+        const decodedObject = decodeURIComponent(object);
+        // parse the decoded object as JSON
+        const parsedObject = JSON.parse(decodedObject);
+        // set each key in the parsed object as a cookie
+        for (const [key, value] of Object.entries(parsedObject)) {
+          document.cookie = `${key}=${value}; path=/`;
+        }
+        fetch('/api/registerKey', {
+          method: 'POST',
+        })
+        window.location.href = "/";
+     </script>
+  </body>
+</html>

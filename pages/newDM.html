@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Created and designed by Levi Hicks -->
+    <meta name="theme-color" content="#000000">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaos</title>
+    <link rel="stylesheet" href="/index.css"/>
+    <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="N11" />
+    <link rel="manifest" href="/site.webmanifest" />
+  </head>
+  <body>
+    <input type="text" id="username" placeholder="Enter username" />
+    <input type="text" id="message" placeholder="Type a message..." />
+    <button id="send">Send</button>
+    <script>
+        document.getElementById('send').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const message = document.getElementById('message').value;
+            if (!username || !message) {
+                alert('Please enter both username and message.');
+                return;
+            }
+            let uuid = await (await fetch('/api/user/uuid/' + username)).json();
+            uuid = uuid.uuid;
+            await fetch('/api/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ toWhom: [uuid], msg: message })
+            });
+        });
+    </script>
+  </body>
+</html>
