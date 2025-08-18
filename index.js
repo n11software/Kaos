@@ -288,7 +288,7 @@ app.post('/api/sendMessage', async (req, res) => {
     return res.status(400).json({ error: 'No recipients specified' });
   }
   try {
-    console.log(userUUID)
+    console.log(userUUID, toWhom, msg, uuid)
     let result = await sendMessage(userUUID, toWhom, msg, uuid);
     if (result.error) {
       return res.status(400).json({ error: result.error });
@@ -408,7 +408,7 @@ let getChats = async (userUUID) => {
   let chats = await getDB().query(
     `SELECT * FROM chats where JSON_CONTAINS(users, JSON_QUOTE(?))`, [userUUID]
   );
-  console.log(chats)
+  console.log(chats[0])
   return chats[0];
 }
 
