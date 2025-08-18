@@ -79,7 +79,6 @@ app.get('/', async (req, res) => {
   let key = req.user.all.kaosKey
   let uuid = await findUser(req.user.username);
   uuid = await uuid.uuid
-  console.log(uuid)
   let chats = await getChats(uuid)
   let html = ``
   {
@@ -90,7 +89,6 @@ app.get('/', async (req, res) => {
       for (let userUUID of chat.users) {
         if (userUUID === uuid) continue; // Skip current user
         let user = await findUserById(userUUID);
-        console.log(user)
         if (user) {
           userDetails.push({
             username: user.plaintext_blob.displayName,
@@ -410,6 +408,7 @@ let getChats = async (userUUID) => {
   let chats = await getDB().query(
     `SELECT * FROM chats where JSON_CONTAINS(users, JSON_QUOTE(?))`, [userUUID]
   );
+  console.log(chats)
   return chats[0];
 }
 
