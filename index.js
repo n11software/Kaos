@@ -35,6 +35,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
 // for every page use this logic before sending the response
 app.use(async (req, res, next) => {
   if (req.path.includes('/auth')) {
@@ -43,20 +44,20 @@ app.use(async (req, res, next) => {
   }
   const token = req.cookies.key ? req.cookies.key : req.cookies.token;
   if (!token) {
-    res.redirect("https://n11.dev/auth?referrer=localhost:3001&href=/auth");
+    res.redirect(`https://n11.dev/auth?referrer=${process.env.HOST}&href=/auth`);
     return;
   }
   try {
     const data = await secureUser.getData(token);
     if (data.error) {
       console.log(data.error);
-      res.redirect("https://n11.dev/auth?referrer=localhost:3001&href=/auth");
+      res.redirect(`https://n11.dev/auth?referrer=${process.env.HOST}&href=/auth`);
       return;
     }
     let user = await findUser(data.username);
     if (!user) {
       console.log("User not found");
-      res.redirect("https://n11.dev/auth?referrer=localhost:3001&href=/auth");
+      res.redirect(`https://n11.dev/auth?referrer=${process.env.HOST}&href=/auth`);
       return;
     }
     // set data in req.user
