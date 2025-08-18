@@ -276,7 +276,7 @@ app.post('/api/sendMessage', async (req, res) => {
     // check if toWhom is already in the db
     let chat = await getDB().query(
       `SELECT * FROM chats WHERE JSON_CONTAINS(users, JSON_QUOTE(?))`,
-      [userUUID]
+      [toWhom]
     );
     if (chat[0].length > 0) {
       uuid = chat[0][0].uuid;
