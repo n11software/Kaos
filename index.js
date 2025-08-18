@@ -408,7 +408,7 @@ const getMessages = async (chatUuid, userUUID, key) => {
 
 let getChats = async (userUUID) => {
   let chats = await getDB().query(
-    `SELECT * FROM chats where JSON_CONTAINS(users, JSON_QUOTE(?))`, [userUUID]
+    `SELECT * FROM chats WHERE ? IN (SELECT value FROM JSON_TABLE(users, '$[*]' COLUMNS (value VARCHAR(255) PATH '$')))`, [userUUID]
   );
   // get rid of chats[0][i][data]
   chats[0] = chats[0].map(chat => {
