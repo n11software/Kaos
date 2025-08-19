@@ -63,10 +63,11 @@
                             <span class="username">${displayName}</span>
                             <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
                         </div>
-                        <span class="data">${msg.msg}</span>
+                        <span class="data"></span>
                     </div>
                 `;
                 messageElement.id = msg.date
+                messageElement.querySelector('.info>.data').innerText = msg.msg
                 chatContainer.appendChild(messageElement);
             }
             document.body.appendChild(chatContainer);
@@ -222,10 +223,11 @@ ws.onmessage = async (event) => {
                               <span class="username">${displayName}</span>
                               <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
                           </div>
-                          <span class="data">${msg.msg}</span>
+                          <span class="data"></span>
                       </div>
                   `;
                   messageElement.id = msg.date
+                messageElement.querySelector('.info>.data').innerText = msg.msg
                   // append to chat
                   let chatElement = document.getElementsByClassName('chat')[0]
                   chatElement.appendChild(messageElement);
