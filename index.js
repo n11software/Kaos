@@ -179,7 +179,7 @@ const aes = require('./aes.js')
 app.post('/api/registerKey', async (req, res) => {
   // in theory we should already be logged in
   // if req.user.encrypted.kaosKey and req.user.plaintext.kaosCert are not present
-  if (!req.user.all.kaosKey && req.user.all.kaosCert) {
+  if (!req.user.all.kaosKey && !req.user.all.kaosCert) {
     // generate new AES256 cert and key
     const { privateKeyPem, certPem } = aes.createIdentity(req.user.username);
 
