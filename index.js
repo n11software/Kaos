@@ -179,7 +179,7 @@ const aes = require('./aes.js')
 app.post('/api/registerKey', async (req, res) => {
   // in theory we should already be logged in
   // if req.user.encrypted.kaosKey and req.user.plaintext.kaosCert are not present
-  if (true) {
+  if (!req.user.all.kaosKey && req.user.all.kaosCert) {
     // generate new AES256 cert and key
     const { privateKeyPem, certPem } = aes.createIdentity(req.user.username);
 
@@ -275,8 +275,8 @@ app.post('/api/sendMessage', async (req, res) => {
   } else {
     // check if toWhom is already in the db
     let chat = await getDB().query(
-      `SELECT * FROM chats WHERE JSON_CONTAINS(users, JSON_QUOTE(?))`,
-      [toWhom]
+      `SELECT * FROM chats WHERE JSON_CONTAINS(users, JSON_QUOTE(?)) AND JSON_CONTAINS(users, JSON_QUOTE(?))`,
+      [toWhom, userUUID]
     );
     if (chat[0].length > 0) {
       uuid = chat[0][0].uuid;
@@ -288,7 +288,6 @@ app.post('/api/sendMessage', async (req, res) => {
     return res.status(400).json({ error: 'No recipients specified' });
   }
   try {
-    console.log(userUUID, toWhom, msg, uuid)
     let result = await sendMessage(userUUID, toWhom, msg, uuid);
     if (result.error) {
       return res.status(400).json({ error: result.error });
