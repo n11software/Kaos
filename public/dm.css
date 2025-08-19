@@ -43,6 +43,7 @@ body {
 
 .info > .data {
     word-wrap: break-word;
+    font-size: 16px;
 }
 
 .stamp {
@@ -54,17 +55,18 @@ body {
 
 .stamp > .username {
     font-weight: bold;
-    font-size: 1.25rem;
+    font-size: 16px;
 }
+
 .stamp > .time {
-    font-size: 0.8rem;
+    font-size: 10px;
     font-weight: bold;
     color: gray;
 }
 
 #messageInput {
     padding: 1rem;
-    font-size: 1rem;
+    font-size: 16px;
     border: none;
     border-radius: 4px;
     background-color: #222;
