@@ -171,73 +171,79 @@ ws.onmessage = async (event) => {
 };
 */
 
-        // Connect to ws
-        let proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${proto}://${window.location.host}/ws/dm/${chatId}`);
-        function extractBundle(x) {
-            if (!x) return null;
-            if (x.alg && x.iv_b64 && x.ct_b64 && x.enc_key_b64 && x.tag_b64) return x;       // already the bundle
-            if (x.msg && typeof x.msg === 'object') return extractBundle(x.msg);              // wrapped in { msg: {...} }
-            if (typeof x.msg === 'string') { try { return extractBundle(JSON.parse(x.msg)); } catch {} }
-            if (typeof x.msg_json === 'string') { try { return extractBundle(JSON.parse(x.msg_json)); } catch {} }
-            return null; // no bundle found
-        }
+        let openWS = () => {
+          // Connect to ws
+          let proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+          const ws = new WebSocket(`${proto}://${window.location.host}/ws/dm/${chatId}`);
+          function extractBundle(x) {
+              if (!x) return null;
+              if (x.alg && x.iv_b64 && x.ct_b64 && x.enc_key_b64 && x.tag_b64) return x;       // already the bundle
+              if (x.msg && typeof x.msg === 'object') return extractBundle(x.msg);              // wrapped in { msg: {...} }
+              if (typeof x.msg === 'string') { try { return extractBundle(JSON.parse(x.msg)); } catch {} }
+              if (typeof x.msg_json === 'string') { try { return extractBundle(JSON.parse(x.msg_json)); } catch {} }
+              return null; // no bundle found
+          }
 
-        async function decryptPayload(rsaPriv, payload) {
-        if (Array.isArray(payload)) {
-            return Promise.all(payload.map(p => decryptPayload(rsaPriv, p)));
-        }
-        const bundle = extractBundle(payload);
-        if (!bundle) throw new Error('No bundle with iv_b64/ct_b64/enc_key_b64/tag_b64 found');
-        // optional strict check:
-        if (bundle.alg && bundle.alg !== 'RSA-OAEP-256+AES-256-GCM') {
-            console.warn('Unexpected alg:', bundle.alg, '— attempting anyway');
-        }
-        const plaintext = await decryptBundle(rsaPriv, bundle);
-        return { ...payload, msg: plaintext }; // replace msg with plaintext
-        }
+          async function decryptPayload(rsaPriv, payload) {
+          if (Array.isArray(payload)) {
+              return Promise.all(payload.map(p => decryptPayload(rsaPriv, p)));
+          }
+          const bundle = extractBundle(payload);
+          if (!bundle) throw new Error('No bundle with iv_b64/ct_b64/enc_key_b64/tag_b64 found');
+          // optional strict check:
+          if (bundle.alg && bundle.alg !== 'RSA-OAEP-256+AES-256-GCM') {
+              console.warn('Unexpected alg:', bundle.alg, '— attempting anyway');
+          }
+          const plaintext = await decryptBundle(rsaPriv, bundle);
+          return { ...payload, msg: plaintext }; // replace msg with plaintext
+          }
 
-        // ----- usage -----
-        const pkcs8Pem = key
-        const rsaPrivPromise = importRsaPrivateKeyPKCS8(pkcs8Pem);
+          // ----- usage -----
+          const pkcs8Pem = key
+          const rsaPrivPromise = importRsaPrivateKeyPKCS8(pkcs8Pem);
 
-        ws.onmessage = async (event) => {
-            try {
-                console.log('Received message:', event.data);
-                const payload = JSON.parse(event.data).data["{uuid}"];          // can be one row or an array
+          ws.onmessage = async (event) => {
+              try {
+                  console.log('Received message:', event.data);
+                  const payload = JSON.parse(event.data).data["{uuid}"];          // can be one row or an array
 
-                console.log('Payload:', payload);
-                const rsaPriv = await rsaPrivPromise;            // import once
-                const msg = await decryptPayload(rsaPriv, payload);
-                let messageElement = document.createElement('div');
-                messageElement.className = 'message';
-                let displayName = await fetch(`/api/user/displayName/${msg.sender}`, {
-                    method: 'GET'
-                }).then(res => res.json()).then(data => data.displayName);
-                messageElement.innerHTML = `
-                    <img src="/api/user/pfp/${msg.sender}" alt="${displayName}" class="pfp" />
-                    <div class="info">
-                        <div class="stamp">
-                            <span class="username">${displayName}</span>
-                            <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
-                        </div>
-                        <span class="data">${msg.msg}</span>
-                    </div>
-                `;
-                messageElement.id = msg.date
-                // append to chat
-                let chatElement = document.getElementsByClassName('chat')[0]
-                chatElement.appendChild(messageElement);
-                // scroll to new id
-                messageElement.scrollIntoView({ behavior: "smooth" });
-            } catch (e) {
-                console.error('decrypt failed:', e);
-                // tip: console.log('payload keys:', Object.keys(JSON.parse(event.data)));
-            }
-        };
-        ws.onopen = () => {
-            console.log('WebSocket connection established');
-        };
+                  console.log('Payload:', payload);
+                  const rsaPriv = await rsaPrivPromise;            // import once
+                  const msg = await decryptPayload(rsaPriv, payload);
+                  let messageElement = document.createElement('div');
+                  messageElement.className = 'message';
+                  let displayName = await fetch(`/api/user/displayName/${msg.sender}`, {
+                      method: 'GET'
+                  }).then(res => res.json()).then(data => data.displayName);
+                  messageElement.innerHTML = `
+                      <img src="/api/user/pfp/${msg.sender}" alt="${displayName}" class="pfp" />
+                      <div class="info">
+                          <div class="stamp">
+                              <span class="username">${displayName}</span>
+                              <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
+                          </div>
+                          <span class="data">${msg.msg}</span>
+                      </div>
+                  `;
+                  messageElement.id = msg.date
+                  // append to chat
+                  let chatElement = document.getElementsByClassName('chat')[0]
+                  chatElement.appendChild(messageElement);
+                  // scroll to new id
+                  messageElement.scrollIntoView({ behavior: "smooth" });
+              } catch (e) {
+                  console.error('decrypt failed:', e);
+                  // tip: console.log('payload keys:', Object.keys(JSON.parse(event.data)));
+              }
+          };
+          ws.onopen = () => {
+              console.log('WebSocket connection established');
+          };
+          ws.onclose = () => {
+            openWS()
+          }
+        }
+        openWS()
     </script>
   </body>
 </html>
