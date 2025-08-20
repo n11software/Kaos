@@ -126,6 +126,35 @@ app.get('/dm/:id', async (req, res) => {
   let uuid = await findUser(req.user.username);
   uuid = await uuid.uuid
   content = content.replace('{uuid}', uuid);
+  let chats = await getChats(uuid)
+  let html = ``
+  {
+    // Get each chat
+    for (let chat of chats) {
+      // Get the display name and profile picture of each user in the chat excluding the current user
+      let userDetails = [];
+      for (let userUUID of chat.users) {
+        if (userUUID === uuid) continue; // Skip current user
+        let user = await findUserById(userUUID);
+        if (user) {
+          userDetails.push({
+            username: user.plaintext_blob.displayName,
+            profilePicture: user.plaintext_blob.pfp.pfp? ('data:image/png;base64,' + user.plaintext_blob.pfp.pfp) : '/cache/Default.jpg'
+          });
+        }
+      }
+      // Create HTML for the chat
+      html += `
+      <div class="dm-sidebar" data-uuid="${chat.uuid}" onclick="window.location.href='/dm/${chat.uuid}'">
+        <img src="${userDetails[0].profilePicture}" alt="${userDetails[0].username}" class="profile-picture">
+        <div class="chat-info">
+          <h3>${userDetails[0].username}</h3>
+        </div>
+      </div>
+      `
+    }
+  }
+  content = content.replaceAll('{chats}', html);
   res.send(content);
 });
 

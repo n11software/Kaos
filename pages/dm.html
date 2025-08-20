@@ -15,6 +15,15 @@
     <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
+    <div id="dm">
+
+    </div>
+    <div class="dms">
+      <div class="container">
+        <span class="title">DMs</span>
+        {chats}
+      </div>
+    </div>
     <script>
         
 
@@ -70,7 +79,7 @@
                 messageElement.querySelector('.info>.data').innerText = msg.msg
                 chatContainer.appendChild(messageElement);
             }
-            document.body.appendChild(chatContainer);
+            document.querySelector('#dm').appendChild(chatContainer);
             // scroll to bottom
             chatContainer.scrollTop = chatContainer.scrollHeight;
             // add input for new messages
@@ -79,7 +88,7 @@
             inputContainer.id = 'messageInput';
             inputContainer.placeholder = 'Type your message here...';
             inputContainer.addEventListener('keydown', sendMessage);
-            document.body.appendChild(inputContainer);
+            document.querySelector('#dm').appendChild(inputContainer);
 
             // scroll to the last element
             document.getElementsByClassName('chat')[0].lastElementChild.scrollIntoView({ behavior: "instant" });
