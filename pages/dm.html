@@ -15,17 +15,76 @@
     <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>New Chat</h2>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-content">
+          <span class="description">Send a message to someone with the username you enter below!</span>
+          <input type="text" placeholder="Username" id="new-username" autocapitalize="off" autocomplete="off" autocorrect="off" autofocus="on"/>
+        </div>
+      </div>
+    </div>
     <div id="dm">
 
     </div>
     <div class="dms">
       <div class="container">
-        <span class="title">DMs</span>
+        <div class="title">
+          <span>DMs</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="new-chat" id="newChat">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
+        </div>
         {chats}
       </div>
     </div>
     <script>
-        
+        // Modal handling
+        const modalOverlay = document.getElementById('modal-overlay');
+        const closeModalBtn = document.querySelector('.close-modal');
+        const newChatBtn = document.getElementById('newChat');
+
+        newChatBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('hidden');
+            document.querySelector('#new-username').focus()
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('hidden');
+        });
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.add('hidden');
+            }
+        });
+
+        document.querySelector('#new-username').onkeydown = async (e) => {
+          if (e.key == 'Enter') {
+            const username = document.getElementById('new-username').value;
+            if (!username) {
+                alert('Please enter a username.');
+                return;
+            }
+            let uuid = await (await fetch('/api/user/uuid/' + username)).json();
+            uuid = uuid.uuid;
+            let c = await fetch('/api/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ toWhom: [uuid] })
+            }).then(c=>c.json())
+            if (c.success&&c.chatID) {
+              window.location.href = '/dm/' + c.chatID
+            } else {
+              console.log(c)
+            }
+          }
+        }
 
         let sendMessage = async (event) => {
             if (event.key === 'Enter') {

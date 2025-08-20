@@ -76,9 +76,14 @@ app.get('/cache/:name', async (req, res) => {
 });
 
 app.get('/', async (req, res) => {
-  let key = req.user.all.kaosKey
+  let key = aes.toPkcs8Pem(req.user.all.kaosKey)
+  key = key.replaceAll('\n', '\\n');
+  key = key.replaceAll('\r', '\\r');
+  let content = fs.readFileSync(path.join(__dirname, 'pages', 'index.html'), 'utf8');
+  content = content.replace('{key}', key);
   let uuid = await findUser(req.user.username);
   uuid = await uuid.uuid
+  content = content.replace('{uuid}', uuid);
   let chats = await getChats(uuid)
   let html = ``
   {
@@ -98,7 +103,7 @@ app.get('/', async (req, res) => {
       }
       // Create HTML for the chat
       html += `
-      <div class="chat" data-uuid="${chat.uuid}" onclick="window.location.href='/dm/${chat.uuid}'">
+      <div class="dm-sidebar" data-uuid="${chat.uuid}" onclick="window.location.href='/dm/${chat.uuid}'">
         <img src="${userDetails[0].profilePicture}" alt="${userDetails[0].username}" class="profile-picture">
         <div class="chat-info">
           <h3>${userDetails[0].username}</h3>
@@ -107,17 +112,11 @@ app.get('/', async (req, res) => {
       `
     }
   }
-  let file = fs.readFileSync(path.join(__dirname, 'pages', 'index.html'), 'utf8');
-  file = file.replaceAll('{chats}', html);
-  res.setHeader('Content-Type', 'text/html');
-  res.send(file);
+  content = content.replaceAll('{chats}', html);
+  res.send(content);
 });
 
 app.get('/dm/:id', async (req, res) => {
-  if (req.params.id === 'new') {
-    res.sendFile(path.join(__dirname, 'pages', 'newDM.html'));
-    return
-  }
   let key = aes.toPkcs8Pem(req.user.all.kaosKey)
   key = key.replaceAll('\n', '\\n');
   key = key.replaceAll('\r', '\\r');
@@ -346,7 +345,7 @@ let sendMessage = async (from, toWhom, msg, uuid='0') => {
   if (!fromUser.plaintext_blob.kaosCert) {
     return {error: 'Sender has not signed up for Kaos'};
   }
-  let encMsg = aes.encryptFor(fromUser.plaintext_blob.kaosCert, msg);
+  let encMsg = aes.encryptFor(fromUser.plaintext_blob.kaosCert, (msg==undefined?'skip':msg));
   users[fromUser.uuid] = {msg: encMsg, date: unix, sender: fromUser.uuid, read: {}}
   for (let username of toWhom) {
     let user = await findUserById(username);
@@ -354,16 +353,17 @@ let sendMessage = async (from, toWhom, msg, uuid='0') => {
     if (user.plaintext_blob.kaosCert === undefined) {
       return {error: `User ${username} has not signed up for Kaos`};
     }
-    let encMsg = aes.encryptFor(user.plaintext_blob.kaosCert, msg);
+    let encMsg = aes.encryptFor(user.plaintext_blob.kaosCert, (msg==undefined?'skip':msg));
     users[user.uuid] = {msg: encMsg, date: unix, sender: fromUser.uuid, read: {}}
   }
   // If UUID = 0 make a new chat if not get current chat
   if (uuid === 0) {
+    uuid = crypto.randomUUID()
     getDB().query(
       `INSERT INTO chats (uuid, users, data) VALUES (?, ?, ?)`,
-      [crypto.randomUUID(), JSON.stringify(Object.keys(users)), '['+JSON.stringify(users)+']']
+      [uuid, JSON.stringify(Object.keys(users)), (msg!=undefined?('['+JSON.stringify(users)+']'):'[]')]
     );
-  } else {
+  } else if (msg!=undefined) {
     let chat = await getDB().query(
       `SELECT * FROM chats WHERE uuid = ?`, [uuid]
     );
@@ -378,11 +378,15 @@ let sendMessage = async (from, toWhom, msg, uuid='0') => {
     );
   }
 
-  // send to ws
-  for (let ws of (SocketDM[uuid] || [])) {
-    ws.send(JSON.stringify({ type: 'message', data: users }));
+  if (msg!=undefined) {
+    // send to ws
+    for (let ws of (SocketDM[uuid] || [])) {
+      ws.send(JSON.stringify({ type: 'message', data: users }));
+    }
+    return {success: true, data: users[fromUser.uuid], chatID: uuid}
+  } else {
+    return {success: true, chatID: uuid}
   }
-  return {success: true, data: users[fromUser.uuid]}
 }
 
 const getMessages = async (chatUuid, userUUID, key) => {

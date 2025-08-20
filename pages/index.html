@@ -5,8 +5,8 @@
     <meta name="theme-color" content="#000000">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kaos</title>
-    <link rel="stylesheet" href="/index.css"/>
+    <title>Kaos - Direct Message</title>
+    <link rel="stylesheet" href="/dm.css"/>
     <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
@@ -15,7 +15,305 @@
     <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
-    {chats}
-    <button class="new-chat" onclick="window.location.href='/dm/new'">New Chat</button>
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>New Chat</h2>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-content">
+          <span class="description">Send a message to someone with the username you enter below!</span>
+          <input type="text" placeholder="Username" id="new-username" autocapitalize="off" autocomplete="off" autocorrect="off" autofocus="on"/>
+        </div>
+      </div>
+    </div>
+    <div id="dm">
+
+    </div>
+    <div class="dms">
+      <div class="container">
+        <div class="title">
+          <span>DMs</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="new-chat" id="newChat">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
+        </div>
+        {chats}
+      </div>
+    </div>
+    <script>
+        // Modal handling
+        const modalOverlay = document.getElementById('modal-overlay');
+        const closeModalBtn = document.querySelector('.close-modal');
+        const newChatBtn = document.getElementById('newChat');
+
+        newChatBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('hidden');
+            document.querySelector('#new-username').focus()
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('hidden');
+        });
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.add('hidden');
+            }
+        });
+
+        document.querySelector('#new-username').onkeydown = async (e) => {
+          if (e.key == 'Enter') {
+            const username = document.getElementById('new-username').value;
+            if (!username) {
+                alert('Please enter a username.');
+                return;
+            }
+            let uuid = await (await fetch('/api/user/uuid/' + username)).json();
+            uuid = uuid.uuid;
+            let c = await fetch('/api/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ toWhom: [uuid] })
+            }).then(c=>c.json())
+            if (c.success&&c.chatID) {
+              window.location.href = '/dm/' + c.chatID
+            } else {
+              console.log(c)
+            }
+          }
+        }
+
+        let sendMessage = async (event) => {
+            // if (event.key === 'Enter') {
+            //     let messageInput = document.getElementById('messageInput');
+            //     let msg = messageInput.value;
+            //     if (!msg) return;
+            //     messageInput.value = '';
+            //     await fetch(`/api/sendMessage`, {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json'
+            //         },
+            //         body: JSON.stringify({ msg, uuid: chatId })
+            //     });
+            // }
+        };
+        // get chatId from URL /dm/id
+        const chatId = window.location.pathname.split('/dm/')[1];
+        let getData = async () => {
+            let data = await fetch(`/api/dm/get/${chatId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ chatId })
+            });
+            if (!data.ok) {
+            throw new Error('Network response was not ok');
+            }
+            let messages = await data.json();
+            // render messages
+            let chatContainer = document.createElement('div');
+            chatContainer.className = 'chat';
+            for (let msg of messages) {
+                let messageElement = document.createElement('div');
+                messageElement.className = 'message';
+                let displayName = await fetch(`/api/user/displayName/${msg.sender}`, {
+                    method: 'GET'
+                }).then(res => res.json()).then(data => data.displayName);
+                messageElement.innerHTML = `
+                    <img src="/api/user/pfp/${msg.sender}" alt="${displayName}" class="pfp" />
+                    <div class="info">
+                        <div class="stamp">
+                            <span class="username">${displayName}</span>
+                            <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
+                        </div>
+                        <span class="data"></span>
+                    </div>
+                `;
+                messageElement.id = msg.date
+                messageElement.querySelector('.info>.data').innerText = msg.msg
+                chatContainer.appendChild(messageElement);
+            }
+            document.querySelector('#dm').appendChild(chatContainer);
+            // scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // add input for new messages
+            let inputContainer = document.createElement('input');
+            inputContainer.className = 'input';
+            inputContainer.id = 'messageInput';
+            inputContainer.placeholder = 'Type your message here...';
+            inputContainer.addEventListener('keydown', sendMessage);
+            document.querySelector('#dm').appendChild(inputContainer);
+
+            // scroll to the last element
+            document.getElementsByClassName('chat')[0].lastElementChild.scrollIntoView({ behavior: "instant" });
+        }
+        getData()
+
+
+        let key = `{key}`
+
+        // ---------- helpers ----------
+const te = new TextEncoder();
+const td = new TextDecoder();
+
+// base64/urlsafe → Uint8Array
+function b64ToBytes(b64) {
+  b64 = (b64 || '').replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '');
+  const pad = b64.length % 4; if (pad) b64 += '===='.slice(pad);
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// PEM (-----BEGIN PRIVATE KEY-----) → ArrayBuffer
+function pemToArrayBuffer(pem) {
+  if (!pem) throw new Error('No PEM provided');
+  if (pem.includes('ENCRYPTED PRIVATE KEY')) {
+    throw new Error('Encrypted PKCS#8 not supported by WebCrypto; decrypt first.');
+  }
+  if (pem.includes('RSA PRIVATE KEY')) {
+    throw new Error('Got PKCS#1. Convert to PKCS#8 on the server.');
+  }
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  return b64ToBytes(b64).buffer;
+}
+
+// ---------- key import ----------
+async function importRsaPrivateKeyPKCS8(pem) {
+  const keyData = pemToArrayBuffer(pem); // must be -----BEGIN PRIVATE KEY-----
+  return crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['decrypt']
+  );
+}
+
+// ---------- decrypt one message bundle ----------
+async function decryptBundle(rsaPrivKey, bundle) {
+  if (!bundle || bundle.alg !== 'RSA-OAEP-256+AES-256-GCM') throw new Error('alg mismatch/bad bundle');
+
+  // unwrap AES key (RSA-OAEP-256)
+  const aesRaw = await crypto.subtle.decrypt(
+    { name: 'RSA-OAEP' },
+    rsaPrivKey,
+    b64ToBytes(bundle.enc_key_b64)
+  );
+  const aesKey = await crypto.subtle.importKey('raw', aesRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+
+  // AES-GCM expects ct||tag
+  const iv  = b64ToBytes(bundle.iv_b64);
+  const ct  = b64ToBytes(bundle.ct_b64);
+  const tag = b64ToBytes(bundle.tag_b64);
+  const ctAndTag = new Uint8Array(ct.length + tag.length);
+  ctAndTag.set(ct, 0);
+  ctAndTag.set(tag, ct.length);
+
+  const params = { name: 'AES-GCM', iv, tagLength: 128 };
+  if (bundle.aad) params.additionalData = te.encode(bundle.aad);
+
+  const ptBuf = await crypto.subtle.decrypt(params, aesKey, ctAndTag);
+  return td.decode(ptBuf);
+}
+
+// ---------- example WS usage ----------
+/*
+const pkcs8Pem = `-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----`; // must be PKCS#8
+const rsaPriv = await importRsaPrivateKeyPKCS8(pkcs8Pem);
+
+ws.onmessage = async (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    const bundle = data.msg ?? data; // if your payload wraps the bundle in { msg: {...} }
+    const plaintext = await decryptBundle(rsaPriv, bundle);
+    console.log('pt:', plaintext);
+  } catch (e) {
+    console.error('decrypt failed:', e);
+  }
+};
+*/
+
+        let openWS = () => {
+          // Connect to ws
+          let proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+          const ws = new WebSocket(`${proto}://${window.location.host}/ws/dm/${chatId}`);
+          function extractBundle(x) {
+              if (!x) return null;
+              if (x.alg && x.iv_b64 && x.ct_b64 && x.enc_key_b64 && x.tag_b64) return x;       // already the bundle
+              if (x.msg && typeof x.msg === 'object') return extractBundle(x.msg);              // wrapped in { msg: {...} }
+              if (typeof x.msg === 'string') { try { return extractBundle(JSON.parse(x.msg)); } catch {} }
+              if (typeof x.msg_json === 'string') { try { return extractBundle(JSON.parse(x.msg_json)); } catch {} }
+              return null; // no bundle found
+          }
+
+          async function decryptPayload(rsaPriv, payload) {
+          if (Array.isArray(payload)) {
+              return Promise.all(payload.map(p => decryptPayload(rsaPriv, p)));
+          }
+          const bundle = extractBundle(payload);
+          if (!bundle) throw new Error('No bundle with iv_b64/ct_b64/enc_key_b64/tag_b64 found');
+          // optional strict check:
+          if (bundle.alg && bundle.alg !== 'RSA-OAEP-256+AES-256-GCM') {
+              console.warn('Unexpected alg:', bundle.alg, '— attempting anyway');
+          }
+          const plaintext = await decryptBundle(rsaPriv, bundle);
+          return { ...payload, msg: plaintext }; // replace msg with plaintext
+          }
+
+          // ----- usage -----
+          const pkcs8Pem = key
+          const rsaPrivPromise = importRsaPrivateKeyPKCS8(pkcs8Pem);
+
+          ws.onmessage = async (event) => {
+              try {
+                  console.log('Received message:', event.data);
+                  const payload = JSON.parse(event.data).data["{uuid}"];          // can be one row or an array
+
+                  console.log('Payload:', payload);
+                  const rsaPriv = await rsaPrivPromise;            // import once
+                  const msg = await decryptPayload(rsaPriv, payload);
+                  let messageElement = document.createElement('div');
+                  messageElement.className = 'message';
+                  let displayName = await fetch(`/api/user/displayName/${msg.sender}`, {
+                      method: 'GET'
+                  }).then(res => res.json()).then(data => data.displayName);
+                  messageElement.innerHTML = `
+                      <img src="/api/user/pfp/${msg.sender}" alt="${displayName}" class="pfp" />
+                      <div class="info">
+                          <div class="stamp">
+                              <span class="username">${displayName}</span>
+                              <span class="time">${new Date(msg.date).toLocaleTimeString()}</span>
+                          </div>
+                          <span class="data"></span>
+                      </div>
+                  `;
+                  messageElement.id = msg.date
+                messageElement.querySelector('.info>.data').innerText = msg.msg
+                  // append to chat
+                  let chatElement = document.getElementsByClassName('chat')[0]
+                  chatElement.appendChild(messageElement);
+                  // scroll to new id
+                  messageElement.scrollIntoView({ behavior: "smooth" });
+              } catch (e) {
+                  console.error('decrypt failed:', e);
+                  // tip: console.log('payload keys:', Object.keys(JSON.parse(event.data)));
+              }
+          };
+          ws.onopen = () => {
+              console.log('WebSocket connection established');
+          };
+          ws.onclose = () => {
+            openWS()
+          }
+        }
+        openWS()
+    </script>
   </body>
 </html>
